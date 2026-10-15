@@ -99,3 +99,4 @@ You need the `Azure Service Bus Data Receiver` role on the queue (see `DEVELOPER
 - **Batch processing:** use `ServiceBusReceivedMessage[]` with `IsBatched = true`.
 - **Networking:** Flex Consumption supports VNet integration. Add a subnet delegated to `Microsoft.App/environments` and set `virtualNetworkSubnetId` on the site, plus private endpoints for Storage and Service Bus (Service Bus Premium is needed for private endpoints).
 - **More environments:** add `infra/main.<env>.bicepparam`, run the bootstrap script for it, and add another `deploy-<env>` job.
+
