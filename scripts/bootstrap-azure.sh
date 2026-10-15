@@ -47,14 +47,16 @@ if ! az ad app federated-credential show --id "$APP_ID" --federated-credential-i
   }" -o none
 fi
 
-echo "==> Role assignments on $RG"
+echo "==> Role assignments on $RG"0
+# echo "==> SP ID is $SP_ID"
+# set -x
 # Contributor: create/update resources and deploy code.
-az role assignment create --assignee-object-id "$SP_ID" --assignee-principal-type ServicePrincipal \
+MSYS_NO_PATHCONV=1 az role assignment create --assignee-object-id "$SP_ID" --assignee-principal-type ServicePrincipal \
   --role "Contributor" --scope "$RG_ID" -o none
 # The Bicep creates role assignments for the function's managed identity, so the pipeline needs
 # to be able to write roleAssignments. RBAC Administrator is narrower than Owner/User Access Administrator.
 # For tighter control, add an ABAC condition limiting which roles it may assign.
-az role assignment create --assignee-object-id "$SP_ID" --assignee-principal-type ServicePrincipal \
+MSYS_NO_PATHCONV=1 az role assignment create --assignee-object-id "$SP_ID" --assignee-principal-type ServicePrincipal \
   --role "Role Based Access Control Administrator" --scope "$RG_ID" -o none
 
 echo
