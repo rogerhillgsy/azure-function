@@ -1,0 +1,72 @@
+name: Deploy environment
+
+# Reusable workflow: deploys the Bicep infrastructure, then the function package built by ci-cd.yml.
+# All Azure settings come from GitHub *environment* variables, so dev and prod are configured
+# independently (and prod can have required reviewers).
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: GitHub environment name (dev | prod). Also selects infra/main.<env>.bicepparam.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    name: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    concurrency:
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    steps:
+      - name: Download infrastructure
+        uses: actions/download-artifact@v4
+        with:
+          name: infra
+          path: ./infra
+
+      - name: Download function package
+        uses: actions/download-artifact@v4
+        with:
+          name: function-app
+          path: ./publish
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy infrastructure (Bicep)
+        id: infra
+        env:
+          DEVELOPER_PRINCIPAL_ID: ${{ vars.DEVELOPER_PRINCIPAL_ID }}
+        run: |
+          outputs=$(az deployment group create \
+            --name "msgproc-${{ github.run_number }}-${{ github.run_attempt }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --parameters "infra/main.${{ inputs.environment }}.bicepparam" \
+            --query properties.outputs \
+            --output json)
+
+          echo "$outputs" | jq .
+          echo "functionAppName=$(echo "$outputs" | jq -r .functionAppName.value)" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy function code
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ steps.infra.outputs.functionAppName }}
+          package: ./publish
+          sku: flexconsumption
+
+      - name: Summary
+        run: |
+          echo "### Deployed to ${{ inputs.environment }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Function app: \`${{ steps.infra.outputs.functionAppName }}\`" >> "$GITHUB_STEP_SUMMARY"

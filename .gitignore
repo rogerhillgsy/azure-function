@@ -1,0 +1,26 @@
+## .NET
+bin/
+obj/
+publish/
+TestResults/
+test-results/
+*.user
+*.suo
+.vs/
+.idea/
+*.trx
+
+## Azure Functions
+local.settings.json
+appsettings.*.local.json
+__azurite_db*__.json
+__blobstorage__/
+__queuestorage__/
+
+## Bicep build output
+infra/**/*.json
+!infra/**/*.parameters.json
+
+## OS
+.DS_Store
+Thumbs.db

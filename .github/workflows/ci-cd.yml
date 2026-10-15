@@ -1,0 +1,133 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore: [ '**.md' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # OIDC login to Azure
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  FUNCTION_PROJECT: src/MessageProcessor/MessageProcessor.csproj
+
+jobs:
+  build:
+    name: Build & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore MessageProcessor.slnx
+
+      - name: Build
+        run: dotnet build MessageProcessor.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: >
+          dotnet test MessageProcessor.slnx --configuration Release --no-build
+          --logger "trx;LogFileName=test-results.trx"
+          --collect "XPlat Code Coverage"
+          --results-directory ./test-results
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: ./test-results
+
+      - name: Publish function
+        run: dotnet publish ${{ env.FUNCTION_PROJECT }} --configuration Release --no-build --output ./publish
+
+      - name: Upload function package
+        uses: actions/upload-artifact@v4
+        with:
+          name: function-app
+          path: ./publish
+          include-hidden-files: true # keeps .azurefunctions/ which the isolated worker needs
+          if-no-files-found: error
+
+      - name: Upload infrastructure
+        uses: actions/upload-artifact@v4
+        with:
+          name: infra
+          path: ./infra
+          if-no-files-found: error
+
+  validate-infra:
+    name: Lint Bicep
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint & build templates
+        run: |
+          az bicep install
+          az bicep lint --file infra/main.bicep
+          az bicep build --file infra/main.bicep --stdout > /dev/null
+          for p in infra/*.bicepparam; do
+            echo "Building $p"
+            az bicep build-params --file "$p" --stdout > /dev/null
+          done
+
+  what-if:
+    name: What-if (dev)
+    if: github.event_name == 'pull_request'
+    needs: validate-infra
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: What-if
+        env:
+          DEVELOPER_PRINCIPAL_ID: ${{ vars.DEVELOPER_PRINCIPAL_ID }}
+        run: |
+          az deployment group what-if \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --parameters infra/main.dev.bicepparam \
+            --result-format FullResourcePayloads \
+            | tee what-if.txt
+
+          {
+            echo '### Bicep what-if (dev)'
+            echo '```'
+            cat what-if.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy-dev:
+    name: Deploy dev
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: [ build, validate-infra ]
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: dev
+    secrets: inherit
+
+  deploy-prod:
+    name: Deploy prod
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: deploy-dev
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: prod
+    secrets: inherit
