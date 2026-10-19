@@ -11,7 +11,7 @@ param deploymentContainerUrl string
 param appInsightsConnectionString string
 param serviceBusFqdn string
 param queueName string
-
+param dataverseUrl string
 param maximumInstanceCount int
 param instanceMemoryMB int
 
@@ -61,6 +61,7 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
         { name: 'ServiceBusConnection__credential', value: 'managedidentity' }
         { name: 'ServiceBusConnection__clientId', value: identityClientId }
         { name: 'ServiceBusQueueName', value: queueName }
+        { name: 'Dataverse__Url', value: dataverseUrl }
       ]
     }
     functionAppConfig: {

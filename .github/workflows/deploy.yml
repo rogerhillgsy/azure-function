@@ -48,7 +48,13 @@ jobs:
         id: infra
         env:
           DEVELOPER_PRINCIPAL_ID: ${{ vars.DEVELOPER_PRINCIPAL_ID }}
+          DATAVERSE_URL: ${{ vars.DATAVERSE_URL }}
         run: |
+          if [[ -z "$DATAVERSE_URL" ]]; then
+            echo "DATAVERSE_URL must be set in the ${{ inputs.environment }} GitHub environment."
+            exit 1
+          fi
+
           outputs=$(az deployment group create \
             --name "msgproc-${{ github.run_number }}-${{ github.run_attempt }}" \
             --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \

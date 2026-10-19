@@ -5,6 +5,7 @@ param environmentName = 'dev'
 param serviceBusSku = 'Standard'
 param maximumInstanceCount = 10
 param instanceMemoryMB = 2048
+param dataverseUrl = readEnvironmentVariable('DATAVERSE_URL', '')
 
 // Set via the pipeline (DEVELOPER_PRINCIPAL_ID variable) or leave empty
 param developerPrincipalId = readEnvironmentVariable('DEVELOPER_PRINCIPAL_ID', '')

@@ -11,7 +11,7 @@ Nothing uses connection strings or keys. The function reaches Storage, Service B
 | Function App (Flex Consumption, Linux) | .NET 10 isolated; scales on queue length |
 | Service Bus namespace + `orders` queue | SAS/local auth disabled; max delivery 10, then dead-letter |
 | Storage account | Host storage + deployment package container; shared-key access disabled |
-| User-assigned managed identity | Granted Blob/Queue/Table data roles, Service Bus Data Receiver, Monitoring Metrics Publisher |
+| User-assigned managed identity | Granted Blob/Queue/Table data roles, Service Bus Data Receiver, Monitoring Metrics Publisher; configure it as a Dataverse application user with contact read permission |
 | Application Insights + Log Analytics | Local auth disabled; Entra ID ingestion |
 
 ## Repo layout
@@ -65,6 +65,8 @@ For each environment this creates:
 
 Then add **required reviewers** on the `prod` environment (Settings → Environments → prod) so prod deployments wait for approval.
 
+Set the `DATAVERSE_URL` variable in each GitHub environment (`dev` and `prod`) to its Dataverse HTTPS URL, for example `https://<organization>.crm.dynamics.com`. The deployment configures this URL on the Function App. In each Dataverse environment, add the Function App's user-assigned managed identity as an application user and grant it a security role with read access to contacts and the `fullname`, `mobilephone`, and `emailaddress1` columns.
+
 Optional: set `DEVELOPER_PRINCIPAL_ID` (your Entra object ID) on the `dev` environment to get send/receive rights on the dev queue for local debugging.
 
 ### 2. Pipeline behaviour
@@ -89,8 +91,10 @@ cd src/MessageProcessor && func start
 You need the `Azure Service Bus Data Receiver` role on the queue (see `DEVELOPER_PRINCIPAL_ID` above). To send a test message, use **Service Bus Explorer** on the queue in the Azure portal (it needs the Data Sender role, which `DEVELOPER_PRINCIPAL_ID` also grants) with a body like:
 
 ```json
-{ "orderId": "ord-1", "customerId": "cust-1", "amount": 42.5, "createdAt": "2026-10-15T10:00:00Z" }
+{ "orderId": "ord-1", "customerId": "<contact-guid>", "amount": 42.5, "createdAt": "2026-10-15T10:00:00Z" }
 ```
+
+For local Dataverse access, set `Dataverse__Url` in `local.settings.json` and ensure the identity selected by `DefaultAzureCredential` is also configured as a Dataverse application user with the contact permissions above. `customerId` must contain the contact's Dataverse GUID.
 
 ## Customising
 
