@@ -7,12 +7,12 @@ using Microsoft.Extensions.Logging;
 
 var builder = FunctionsApplication.CreateBuilder(args);
 
-// After creating the builder:
-builder.Logging.AddFilter("Azure.Identity", LogLevel.Warning);
-
 builder.Services
     .AddApplicationInsightsTelemetryWorkerService()
     .ConfigureFunctionsApplicationInsights();
+
+// After creating the builder:
+builder.Logging.AddFilter("Azure.Identity", LogLevel.Warning);
 
 builder.Services.AddScoped<IOrderHandler, OrderHandler>();
 
