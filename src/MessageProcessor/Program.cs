@@ -13,6 +13,7 @@ builder.Services
 
 // After creating the builder:
 builder.Logging.AddFilter("Azure.Identity", LogLevel.Warning);
+builder.Logging.AddFilter("Azure.Identity.1", LogLevel.Warning);
 
 builder.Services.AddScoped<IOrderHandler, OrderHandler>();
 
