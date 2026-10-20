@@ -1,19 +1,23 @@
 using MessageProcessor.Handlers;
 using MessageProcessor.Models;
 using Microsoft.Extensions.Logging.Abstractions;
+using MessageProcessor.Contacts;
 
 namespace MessageProcessor.Tests;
 
 public class OrderHandlerTests
 {
-    private readonly OrderHandler _sut = new(NullLogger<OrderHandler>.Instance);
-
     [Fact]
     public async Task Valid_order_is_processed()
     {
-        var order = new OrderMessage("ord-1", "cust-1", 42.50m, DateTimeOffset.UtcNow);
+        var contactId = Guid.NewGuid();
+        var contactService = new StubContactService(
+            new ContactInfo(contactId, "Test Contact", "123", "test@example.com"));
+        var sut = new OrderHandler(contactService, NullLogger<OrderHandler>.Instance);
+        var order = new OrderMessage("ord-1", contactId.ToString(), 42.50m, DateTimeOffset.UtcNow);
 
-        await _sut.HandleAsync(order, CancellationToken.None);
+        await sut.HandleAsync(order, CancellationToken.None);
+        Assert.Equal(contactId, contactService.RequestedContactId);
     }
 
     [Theory]
@@ -21,9 +25,10 @@ public class OrderHandlerTests
     [InlineData("   ")]
     public async Task Missing_order_id_is_rejected(string orderId)
     {
-        var order = new OrderMessage(orderId, "cust-1", 10m, DateTimeOffset.UtcNow);
+        var sut = new OrderHandler(new StubContactService(null), NullLogger<OrderHandler>.Instance);
+        var order = new OrderMessage(orderId, Guid.NewGuid().ToString(), 10m, DateTimeOffset.UtcNow);
 
-        await Assert.ThrowsAsync<InvalidOrderException>(() => _sut.HandleAsync(order, CancellationToken.None));
+        await Assert.ThrowsAsync<InvalidOrderException>(() => sut.HandleAsync(order, CancellationToken.None));
     }
 
     [Theory]
@@ -31,8 +36,38 @@ public class OrderHandlerTests
     [InlineData(-1)]
     public async Task Non_positive_amount_is_rejected(decimal amount)
     {
-        var order = new OrderMessage("ord-1", "cust-1", amount, DateTimeOffset.UtcNow);
+        var sut = new OrderHandler(new StubContactService(null), NullLogger<OrderHandler>.Instance);
+        var order = new OrderMessage("ord-1", Guid.NewGuid().ToString(), amount, DateTimeOffset.UtcNow);
 
-        await Assert.ThrowsAsync<InvalidOrderException>(() => _sut.HandleAsync(order, CancellationToken.None));
+        await Assert.ThrowsAsync<InvalidOrderException>(() => sut.HandleAsync(order, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Invalid_customer_id_is_rejected()
+    {
+        var sut = new OrderHandler(new StubContactService(null), NullLogger<OrderHandler>.Instance);
+        var order = new OrderMessage("ord-1", "not-a-guid", 10m, DateTimeOffset.UtcNow);
+
+        await Assert.ThrowsAsync<InvalidOrderException>(() => sut.HandleAsync(order, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Unknown_contact_is_rejected()
+    {
+        var sut = new OrderHandler(new StubContactService(null), NullLogger<OrderHandler>.Instance);
+        var order = new OrderMessage("ord-1", Guid.NewGuid().ToString(), 10m, DateTimeOffset.UtcNow);
+
+        await Assert.ThrowsAsync<InvalidOrderException>(() => sut.HandleAsync(order, CancellationToken.None));
+    }
+
+    private sealed class StubContactService(ContactInfo? contact) : IContactService
+    {
+        public Guid? RequestedContactId { get; private set; }
+
+        public Task<ContactInfo?> GetByIdAsync(Guid contactId, CancellationToken cancellationToken)
+        {
+            RequestedContactId = contactId;
+            return Task.FromResult(contact);
+        }
     }
 }

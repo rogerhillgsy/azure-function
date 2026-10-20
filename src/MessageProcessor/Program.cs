@@ -1,3 +1,6 @@
+using Azure.Core;
+using Azure.Identity;
+using MessageProcessor.Contacts;
 using MessageProcessor.Handlers;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Builder;
@@ -13,6 +16,20 @@ builder.Services
     .AddApplicationInsightsTelemetryWorkerService()
     .ConfigureFunctionsApplicationInsights();
 
+builder.Services.AddOptions<DataverseOptions>()
+    .BindConfiguration(DataverseOptions.SectionName)
+    .Validate(options =>
+        Uri.TryCreate(options.Url, UriKind.Absolute, out var uri) &&
+        uri.Scheme == Uri.UriSchemeHttps,
+        "Dataverse:Url must be an absolute HTTPS URL.")
+    .ValidateOnStart();
+
+builder.Services.AddSingleton<TokenCredential>(_ => new DefaultAzureCredential(
+    new DefaultAzureCredentialOptions
+    {
+        ManagedIdentityClientId = builder.Configuration["ServiceBusConnection__clientId"],
+    }));
+builder.Services.AddHttpClient<IContactService, DataverseContactService>();
 builder.Services.AddScoped<IOrderHandler, OrderHandler>();
 
 builder.Build().Run();

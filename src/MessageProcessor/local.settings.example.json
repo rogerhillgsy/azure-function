@@ -5,6 +5,7 @@
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
     "ServiceBusQueueName": "orders",
 
-    "ServiceBusConnection__fullyQualifiedNamespace": "<your-namespace>.servicebus.windows.net"
+    "ServiceBusConnection__fullyQualifiedNamespace": "<your-namespace>.servicebus.windows.net",
+    "Dataverse__Url": "https://<your-environment>.crm.dynamics.com"
   }
 }

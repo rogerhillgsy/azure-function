@@ -14,6 +14,9 @@ param location string = resourceGroup().location
 @description('Name of the queue the function listens to.')
 param queueName string = 'orders'
 
+@description('HTTPS base URL of the Dataverse environment.')
+param dataverseUrl string
+
 @description('Service Bus SKU. Standard is needed for topics; Premium for VNet integration / large messages.')
 @allowed([ 'Basic', 'Standard', 'Premium' ])
 param serviceBusSku string = 'Standard'
@@ -106,6 +109,7 @@ module functionApp 'modules/functionapp.bicep' = {
     appInsightsConnectionString: monitoring.outputs.connectionString
     serviceBusFqdn: serviceBus.outputs.fullyQualifiedNamespace
     queueName: queueName
+    dataverseUrl: dataverseUrl
     maximumInstanceCount: maximumInstanceCount
     instanceMemoryMB: instanceMemoryMB
   }

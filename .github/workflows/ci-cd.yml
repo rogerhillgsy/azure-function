@@ -100,7 +100,13 @@ jobs:
       - name: What-if
         env:
           DEVELOPER_PRINCIPAL_ID: ${{ vars.DEVELOPER_PRINCIPAL_ID }}
+          DATAVERSE_URL: ${{ vars.DATAVERSE_URL }}
         run: |
+          if [[ -z "$DATAVERSE_URL" ]]; then
+            echo "DATAVERSE_URL must be set in the dev GitHub environment."
+            exit 1
+          fi
+
           az deployment group what-if \
             --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
             --parameters infra/main.dev.bicepparam \
