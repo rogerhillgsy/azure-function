@@ -27,7 +27,7 @@ builder.Services.AddOptions<DataverseOptions>()
 builder.Services.AddSingleton<TokenCredential>(_ => new DefaultAzureCredential(
     new DefaultAzureCredentialOptions
     {
-        ManagedIdentityClientId = builder.Configuration["ServiceBusConnection__clientId"],
+        ManagedIdentityClientId = builder.Configuration["ServiceBusConnection:clientId"],
     }));
 builder.Services.AddHttpClient<IContactService, DataverseContactService>();
 builder.Services.AddScoped<IOrderHandler, OrderHandler>();
