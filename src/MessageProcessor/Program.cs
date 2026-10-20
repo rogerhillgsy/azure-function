@@ -16,6 +16,17 @@ builder.Services
     .AddApplicationInsightsTelemetryWorkerService()
     .ConfigureFunctionsApplicationInsights();
 
+builder.Logging.Services.Configure<LoggerFilterOptions>(options =>
+{
+    var applicationInsightsDefaultRule = options.Rules.FirstOrDefault(rule =>
+        rule.ProviderName == "Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider");
+
+    if (applicationInsightsDefaultRule is not null)
+    {
+        options.Rules.Remove(applicationInsightsDefaultRule);
+    }
+});
+
 builder.Services.AddOptions<DataverseOptions>()
     .BindConfiguration(DataverseOptions.SectionName)
     .Validate(options =>
