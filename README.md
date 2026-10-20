@@ -44,7 +44,7 @@ tests/MessageProcessor.Tests/
 | Handler throws `InvalidOrderException` | `DeadLetter` (`ValidationFailed`): retrying won't help |
 | Any other exception | Bubbles up, so the message is abandoned and retried until `maxDeliveryCount`, then dead-lettered by Service Bus |
 
-The business logic sits in `OrderHandler`, which has no Functions or Service Bus dependencies, so it is unit-tested directly.
+The business logic sits in `OrderHandler`, which has no Functions or Service Bus dependencies, so it is unit-tested directly. Dataverse access uses the Dataverse SDK `ServiceClient` and SDK query/entity types. Unit tests use FakeXrmEasy with the Reciprocal Public License 1.5; review its terms before redistributing or reusing the test setup.
 
 ## Getting started
 

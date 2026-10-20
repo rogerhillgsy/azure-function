@@ -2,11 +2,13 @@ using Azure.Core;
 using Azure.Identity;
 using MessageProcessor.Contacts;
 using MessageProcessor.Handlers;
+using Microsoft.PowerPlatform.Dataverse.Client;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 var builder = FunctionsApplication.CreateBuilder(args);
 // After creating the builder:
@@ -40,7 +42,31 @@ builder.Services.AddSingleton<TokenCredential>(_ => new DefaultAzureCredential(
     {
         ManagedIdentityClientId = builder.Configuration["ServiceBusConnection:clientId"],
     }));
-builder.Services.AddHttpClient<IContactService, DataverseContactService>();
+builder.Services.AddSingleton<ServiceClient>(serviceProvider =>
+{
+    var dataverseOptions = serviceProvider.GetRequiredService<IOptions<DataverseOptions>>().Value;
+    var credential = serviceProvider.GetRequiredService<TokenCredential>();
+    var serviceClient = new ServiceClient(new Uri(dataverseOptions.Url), async instanceUri =>
+    {
+        var dataverseUri = new Uri(instanceUri);
+        var token = await credential.GetTokenAsync(
+            new TokenRequestContext([$"{dataverseUri.GetLeftPart(UriPartial.Authority)}/.default"]),
+            CancellationToken.None);
+        return token.Token;
+    });
+
+    if (!serviceClient.IsReady)
+    {
+        var error = serviceClient.LastError;
+        serviceClient.Dispose();
+        throw new InvalidOperationException($"Could not connect to Dataverse: {error}");
+    }
+
+    return serviceClient;
+});
+builder.Services.AddSingleton<IOrganizationServiceAsync2>(serviceProvider =>
+    serviceProvider.GetRequiredService<ServiceClient>());
+builder.Services.AddScoped<IContactService, DataverseContactService>();
 builder.Services.AddScoped<IOrderHandler, OrderHandler>();
 
 builder.Build().Run();
