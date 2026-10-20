@@ -43,7 +43,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results
           path: ./test-results
@@ -52,7 +52,7 @@ jobs:
         run: dotnet publish ${{ env.FUNCTION_PROJECT }} --configuration Release --no-build --output ./publish
 
       - name: Upload function package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: function-app
           path: ./publish
@@ -60,7 +60,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload infrastructure
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: infra
           path: ./infra
