@@ -42,8 +42,8 @@ public sealed class OrderHandler(
         }
 
         logger.LogInformation(
-            "Processing order {OrderId} for contact {ContactId}, amount {Amount}",
-            order.OrderId, contact.Id, order.Amount);
+            "Processing order {OrderId} for contact {FullName} ({ContactId}), amount {Amount}",
+            order.OrderId, contact.FullName, contact.Id, order.Amount);
 
         // TODO: real work goes here (write to a database, call an API, publish an event, ...)
     }
